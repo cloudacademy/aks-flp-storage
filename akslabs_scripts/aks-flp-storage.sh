@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.1 20220107
+# Version v0.0.2 20220110
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
@@ -58,7 +58,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.1 20220107"
+SCRIPT_VERSION="Version v0.0.2 20220110"
 
 # Funtion definition
 
@@ -144,7 +144,7 @@ function lab_scenario_1 () {
     az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
     az disk create \
     --resource-group $RESOURCE_GROUP \
-    --name myAKSDisk1 \
+    --name datadisk1 \
     --size-gb 5 &>/dev/null
     DISK_URI="$(az disk show -g $RESOURCE_GROUP -n myAKSDisk1 -o tsv --query id)"
 
@@ -183,7 +183,7 @@ spec:
         - name: azure
           azureDisk:
             kind: Managed
-            diskName: myAKSDisk1
+            diskName: datadisk1
             diskURI: $DISK_URI
             fsType: ext4
 EOF
