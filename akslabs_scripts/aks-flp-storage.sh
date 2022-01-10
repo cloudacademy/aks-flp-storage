@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.2 20220110
+# Version v0.0.3 20220110
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
@@ -58,7 +58,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.2 20220110"
+SCRIPT_VERSION="Version v0.0.3 20220110"
 
 # Funtion definition
 
@@ -124,7 +124,6 @@ function lab_scenario_1 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
     RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
-    ACR_NAME=acr${USER_ALIAS}${RANDOM}
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
 
@@ -146,7 +145,7 @@ function lab_scenario_1 () {
     --resource-group $RESOURCE_GROUP \
     --name datadisk1 \
     --size-gb 5 &>/dev/null
-    DISK_URI="$(az disk show -g $RESOURCE_GROUP -n myAKSDisk1 -o tsv --query id)"
+    DISK_URI="$(az disk show -g $RESOURCE_GROUP -n datadisk1 -o tsv --query id)"
 
 kubectl create ns workload &>/dev/null
 cat <<EOF | kubectl -n workload apply -f &>/dev/null -
