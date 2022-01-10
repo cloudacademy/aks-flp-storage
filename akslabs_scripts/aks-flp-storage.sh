@@ -146,7 +146,7 @@ function lab_scenario_1 () {
     --resource-group $RESOURCE_GROUP \
     --name myAKSDisk1 \
     --size-gb 5 &>/dev/null
-    DISK_URI="$(az disk show -g aks-timeout-rg -n myAKSDisk1 -o tsv --query id)"
+    DISK_URI="$(az disk show -g $RESOURCE_GROUP -n myAKSDisk1 -o tsv --query id)"
 
 kubectl create ns workload &>/dev/null
 cat <<EOF | kubectl -n workload apply -f &>/dev/null -
@@ -209,7 +209,7 @@ function lab_scenario_1_validation () {
     elif [ $LAB_TAG -eq $LAB_SCENARIO ]
     then
         az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-        NUMBER_OF_PODS="$(kubectl get po -n workload --field-selector=status.phase=Running | grep ^nginx0-deployment | wc -l)"
+        NUMBER_OF_PODS="$(kubectl get po -n workload --field-selector=status.phase=Running 2&> /dev/null | grep ^nginx0-deployment | wc -l)"
         if [ $NUMBER_OF_PODS -ge 2 ]
         then
             echo -e "\n\n========================================================"
@@ -228,22 +228,13 @@ function lab_scenario_2 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
     RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
-    SP_NAME=${USER_ALIAS}-AKS-SP${RANDOM}
-
-    while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &
-    SP_PASS=$(az ad sp create-for-rbac --name $SP_NAME --query password -o tsv 2>/dev/null)
-    SP_ID=$(az ad sp list --display-name $SP_NAME --query [].appId -o tsv)
-    sleep 80
-    kill $!; trap 'kill $!' SIGTERM
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
     az aks create \
     --resource-group $RESOURCE_GROUP \
     --name $CLUSTER_NAME \
     --location $LOCATION \
-    --node-count 1 \
-    --service-principal $SP_ID \
-    --client-secret $SP_PASS \
+    --node-count 3 \
     --generate-ssh-keys \
     --tag aks-storage-lab=${LAB_SCENARIO} \
 	--yes \
@@ -252,15 +243,62 @@ function lab_scenario_2 () {
     validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
     
     echo -e "\n\n--> Please wait while we are preparing the environment for you to troubleshoot...\n"
-    while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &
-    az ad sp credential reset --name $SP_ID --query password &>/dev/null
     CLUSTER_URI="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query id -o tsv)"
-    sleep 110
-    az aks scale -g $RESOURCE_GROUP -n $CLUSTER_NAME -c 2 &>/dev/null
-    kill $!; trap 'kill $!' SIGTERM
 
+cat <<EOF | kubectl apply -f &>/dev/null -
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: azure-managed-disk
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: managed-premium
+  resources:
+    requests:
+      storage: 5Gi
+EOF
+cat <<EOF | kubectl apply -f &>/dev/null -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-cache
+spec:
+  selector:
+    matchLabels:
+      app: store
+  replicas: 2
+  template:
+    metadata:
+      labels:
+        app: store
+    spec:
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app
+                operator: In
+                values:
+                - store
+            topologyKey: "kubernetes.io/hostname"
+      containers:
+      - name: redis-server
+        image: redis:3.2-alpine
+        volumeMounts:
+          - name: azure
+            mountPath: /mnt/azure
+      volumes:
+        - name: azure
+          persistentVolumeClaim:
+            claimName: azure-managed-disk
+EOF
+    while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &
+    sleep 35
+    kill $!; trap 'kill $!' SIGTERM
     echo -e "\n\n********************************************************"
-    echo -e "\n--> Issue description: \n AKS cluster scale action not working, looking to have at least 2 nodes\n"
+    echo -e "\n--> Issue description: \n Deployment redis-cache on default namespace has pods with issues\n"
     echo -e "Cluster uri == ${CLUSTER_URI}\n"
 }
 
@@ -279,11 +317,11 @@ function lab_scenario_2_validation () {
     elif [ $LAB_TAG -eq $LAB_SCENARIO ]
     then
         az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-        NUMBER_OF_NODES="$(kubectl get no | grep -v ^NAME | wc -l)"
-        if [ $NUMBER_OF_NODES -ge 2 ]
+        REPLICAS_UNAVAILABLE="$(kubectl describe deploy redis-cache | grep ^Replicas | awk '{print $(NF-1)}')"
+        if [ $REPLICAS_UNAVAILABLE -eq 0 ]
         then
             echo -e "\n\n========================================================"
-            echo -e "\nThe $CLUSTER_NAME has been successfully scaled\n"
+            echo -e "\nThe redis-cache deployment looks good now\n"
         else
             echo -e "\nScenario $LAB_SCENARIO is still FAILED\n"
         fi
