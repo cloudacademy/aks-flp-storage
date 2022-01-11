@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.3 20220110
+# Version v0.0.4 20220111
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
@@ -58,7 +58,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.3 20220110"
+SCRIPT_VERSION="Version v0.0.4 20220111"
 
 # Funtion definition
 
@@ -208,8 +208,8 @@ function lab_scenario_1_validation () {
     elif [ $LAB_TAG -eq $LAB_SCENARIO ]
     then
         az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-        NUMBER_OF_PODS="$(kubectl get po -n workload --field-selector=status.phase=Running 2&> /dev/null | grep ^nginx0-deployment | wc -l)"
-        if [ $NUMBER_OF_PODS -ge 2 ]
+        NUMBER_OF_PODS="$(kubectl get po -n workload --field-selector=status.phase=Running | grep ^mydeployment | wc -l)"
+        if [ $NUMBER_OF_PODS -ge 1 ]
         then
             echo -e "\n\n========================================================"
             echo -e "\nThe pods in $CLUSTER_NAME look good now\n"
@@ -242,6 +242,7 @@ function lab_scenario_2 () {
     validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
     
     echo -e "\n\n--> Please wait while we are preparing the environment for you to troubleshoot...\n"
+    az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
     CLUSTER_URI="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query id -o tsv)"
 
 cat <<EOF | kubectl apply -f &>/dev/null -
