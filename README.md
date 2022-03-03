@@ -20,7 +20,6 @@ Here is the list of current labs available:
 *************************************************************************************
 *        1. AKS disk attach issues
 *        2. AKS disk multiattach issues
-*        3. 
 *************************************************************************************
 
 "-l|--lab" Lab scenario to deploy (3 possible options)

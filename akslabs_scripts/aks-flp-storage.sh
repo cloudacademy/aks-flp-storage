@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.4 20220111
+# Version v0.0.5 20220303
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
@@ -58,7 +58,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.4 20220111"
+SCRIPT_VERSION="Version v0.0.5 20220303"
 
 # Funtion definition
 
@@ -115,7 +115,6 @@ function print_usage_text () {
 *************************************************************************************
 *\t 1. AKS disk attach issues
 *\t 2. AKS disk multiattach issues
-*\t 3. 
 *************************************************************************************\n"
 }
 
@@ -331,65 +330,6 @@ function lab_scenario_2_validation () {
     fi
 }
 
-# Lab scenario 3
-function lab_scenario_3 () {
-    CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
-    check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
-    
-    echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
-    az aks create \
-    --resource-group $RESOURCE_GROUP \
-    --name $CLUSTER_NAME \
-    --location $LOCATION \
-    --node-count 1 \
-    --api-server-authorized-ip-ranges 0.0.0.0/32 \
-    --generate-ssh-keys \
-    --tag aks-storage-lab=${LAB_SCENARIO} \
-	--yes \
-    -o table
-
-    validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
-
-    echo -e "\n\n--> Please wait while we are preparing the environment for you to troubleshoot...\n"
-    az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-    CLUSTER_URI="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query id -o tsv)"
-    echo -e "\n\n********************************************************"
-    echo -e "\n--> Issue description: \nCluster API not reachable, kubectl commands failing\n"
-    echo -e "\nCluster uri == ${CLUSTER_URI}\n"
-}
-
-function lab_scenario_3_validation () {
-CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
-    validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
-
-    LAB_TAG="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query tags -o yaml 2>/dev/null | grep aks-storage-lab | cut -d ' ' -f2 | tr -d "'")"
-    echo -e "\n+++++++++++++++++++++++++++++++++++++++++++++++++++++"
-    echo -e "--> Running validation for Lab scenario $LAB_SCENARIO\n"
-    if [ -z $LAB_TAG ]
-    then
-        echo -e "\n--> Error: Cluster $CLUSTER_NAME in resource group $RESOURCE_GROUP was not created with this tool for lab $LAB_SCENARIO and cannot be validated...\n"
-        exit 6
-    elif [ $LAB_TAG -eq $LAB_SCENARIO ]
-    then
-        az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-        while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &
-        API_CONNECTION_STATUS="$(timeout 15 kubectl get no &>/dev/null; echo $?)"
-        kill $!; trap 'kill $!' SIGTERM
-        if [ $API_CONNECTION_STATUS -eq 0 ]
-        then
-            echo -e "\n\n========================================================"
-            echo -e "\nThe $CLUSTER_NAME cluster API is now reachable\n"
-        else
-            echo -e "\nScenario $LAB_SCENARIO is still FAILED\n"
-        fi
-    else
-        echo -e "\n--> Error: Cluster $CLUSTER_NAME in resource group $RESOURCE_GROUP was not created with this tool for lab $LAB_SCENARIO and cannot be validated...\n"
-        exit 6
-    fi
-}
-
 #if -h | --help option is selected usage will be displayed
 if [ $HELP -eq 1 ]
 then
@@ -420,9 +360,9 @@ if [ -z $USER_ALIAS ]; then
 fi
 
 # lab scenario has a valid option
-if [[ ! $LAB_SCENARIO =~ ^[1-3]+$ ]];
+if [[ ! $LAB_SCENARIO =~ ^[1-2]+$ ]];
 then
-    echo -e "\n--> Error: invalid value for lab scenario '-l $LAB_SCENARIO'\nIt must be value from 1 to 3\n"
+    echo -e "\n--> Error: invalid value for lab scenario '-l $LAB_SCENARIO'\nIt must be value from 1 to 2\n"
     exit 11
 fi
 
