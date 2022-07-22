@@ -167,6 +167,7 @@ function lab_scenario_1 () {
     --name $CLUSTER_NAME \
     --location $LOCATION \
     --node-count 1 \
+    --node-vm-size "$SKU" \
     --tag aks-storage-lab=${LAB_SCENARIO} \
     --generate-ssh-keys \
     --yes \
@@ -271,6 +272,7 @@ function lab_scenario_2 () {
     --name $CLUSTER_NAME \
     --location $LOCATION \
     --node-count 3 \
+    --node-vm-size "$SKU" \
     --generate-ssh-keys \
     --tag aks-storage-lab=${LAB_SCENARIO} \
 	--yes \
