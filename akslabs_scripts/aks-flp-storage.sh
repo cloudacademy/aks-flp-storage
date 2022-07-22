@@ -1,17 +1,19 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.5 20220303
+# Version v0.0.6 20220721
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
 # "-r|--region" region to deploy the resources
+# "-s|--sku" nodes SKU
 # "-u|--user" User alias to add on the lab name
+# "-v|--validate" validate resolution
 # "-h|--help" help info
 # "--version" print version
 
 # read the options
-TEMP=`getopt -o g:n:l:r:u:hv --long resource-group:,name:,lab:,region:,user:,help,validate,version -n 'aks-flp-storage.sh' -- "$@"`
+TEMP=`getopt -o g:n:l:r:s:u:hv --long resource-group:,name:,lab:,region:,sku:,user:,help,validate,version -n 'aks-flp-storage.sh' -- "$@"`
 eval set -- "$TEMP"
 
 # set an initial value for the flags
@@ -20,6 +22,7 @@ CLUSTER_NAME=""
 LAB_SCENARIO=""
 USER_ALIAS=""
 LOCATION="uksouth"
+SKU="Standard_DS2_v2"
 VALIDATE=0
 HELP=0
 VERSION=0
@@ -44,6 +47,10 @@ do
             "") shift 2;;
             *) LOCATION="$2"; shift 2;;
             esac;;
+        -s|--sku) case "$2" in
+            "") shift 2;;
+            *) SKU="$2"; shift 2;;
+            esac;;
         -u|--user) case "$2" in
             "") shift 2;;
             *) USER_ALIAS="$2"; shift 2;;
@@ -58,7 +65,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.5 20220303"
+SCRIPT_VERSION="Version v0.0.6 20220721"
 
 # Funtion definition
 
@@ -68,6 +75,26 @@ function az_login_check () {
     then
         echo -e "\n--> Warning: You have to login first with the 'az login' command before you can run this lab tool\n"
         az login -o table
+    fi
+}
+
+# validate SKU availability
+function check_sku_availability () {
+    SKU="$1"
+    
+    echo -e "\n--> Checking if SKU \"$SKU\" is available in your subscription at region \"$LOCATION\" ...\n"
+    while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &  # running spiner
+    SKU_LIST="$(az vm list-skus -l $LOCATION -o table | grep -v -E '(disk|hostGroups/hosts|snapshots|availabilitySets|NotAvailableForSubscription|Name|^--)')"
+    kill $!; trap 'kill $!' SIGTERM # kill spiner
+    if ! $(echo "$SKU_LIST" | grep -q -w "$SKU")
+    then
+        echo -e "\n--> ERROR: The SKU \"${SKU}\" is not available in your subscription at region \"${LOCATION}\".\n"
+        echo -e "The SKUs currently available in your subscription for region \"${LOCATION}\" are:\n"
+        echo "$SKU_LIST" | awk '{print $3}' | pr -7 -s" | " -T
+        echo -e "\n\n--> Please try with one of the above SKUs (if any) or try with a different region.\n"
+        exit 4
+    else
+        echo -e "\n--> SKU \"${SKU}\" is available in your subscription at region \"${LOCATION}\"\n"
     fi
 }
 
@@ -110,18 +137,27 @@ function validate_cluster_exists () {
 # Usage text
 function print_usage_text () {
     NAME_EXEC="aks-flp-storage"
-    echo -e "$NAME_EXEC usage: $NAME_EXEC -l <LAB#> -u <USER_ALIAS> [-v|--validate] [-r|--region] [-h|--help] [--version]\n"
-    echo -e "\nHere is the list of current labs available:\n
+    echo -e "$NAME_EXEC usage: $NAME_EXEC -l <LAB#> -u <USER_ALIAS> [-v|--validate] [-r|--region] [-s|--sku] [-h|--help] [--version]"
+    echo -e "\nHere is the list of current labs available:
 *************************************************************************************
 *\t 1. AKS disk attach issues
 *\t 2. AKS disk multiattach issues
 *************************************************************************************\n"
+echo -e '"-l|--lab" Lab scenario to deploy (3 possible options)
+"-u|--user" User alias to add on the lab name
+"-r|--region" region to create the resources
+"-s|--sku" nodes SKU
+"-v|--validate" validate resolution
+"--version" print version of the tool
+"-h|--help" help info\n'
 }
 
 # Lab scenario 1
 function lab_scenario_1 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
     RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    
+    check_sku_availability "$SKU"
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
@@ -225,6 +261,8 @@ function lab_scenario_1_validation () {
 function lab_scenario_2 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
     RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    
+    check_sku_availability "$SKU"
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
@@ -294,7 +332,7 @@ spec:
             claimName: azure-managed-disk
 EOF
     while true; do for s in / - \\ \|; do printf "\r$s"; sleep 1; done; done &
-    sleep 35
+    sleep 40
     kill $!; trap 'kill $!' SIGTERM
     echo -e "\n\n********************************************************"
     echo -e "\n--> Issue description: \n Deployment redis-cache on default namespace has pods with issues\n"
@@ -334,10 +372,6 @@ function lab_scenario_2_validation () {
 if [ $HELP -eq 1 ]
 then
 	print_usage_text
-    echo -e '"-l|--lab" Lab scenario to deploy (3 possible options)
-"-r|--region" region to create the resources
-"--version" print version of aks-flp-storage
-"-h|--help" help info\n'
 	exit 0
 fi
 
@@ -371,6 +405,8 @@ echo -e "\n--> AKS Troubleshooting sessions
 ********************************************
 
 This tool will use your default subscription to deploy the lab environments.
+
+--> Checking prerequisites...
 Verifing if you are authenticated already...\n"
 
 # Verify az cli has been authenticated
@@ -378,7 +414,6 @@ az_login_check
 
 if [ $LAB_SCENARIO -eq 1 ] && [ $VALIDATE -eq 0 ]
 then
-    check_resourcegroup_cluster
     lab_scenario_1
 
 elif [ $LAB_SCENARIO -eq 1 ] && [ $VALIDATE -eq 1 ]
@@ -387,7 +422,6 @@ then
 
 elif [ $LAB_SCENARIO -eq 2 ] && [ $VALIDATE -eq 0 ]
 then
-    check_resourcegroup_cluster
     lab_scenario_2
 
 elif [ $LAB_SCENARIO -eq 2 ] && [ $VALIDATE -eq 1 ]
@@ -396,7 +430,6 @@ then
 
 elif [ $LAB_SCENARIO -eq 3 ] && [ $VALIDATE -eq 0 ]
 then
-    check_resourcegroup_cluster
     lab_scenario_3
 
 elif [ $LAB_SCENARIO -eq 3 ] && [ $VALIDATE -eq 1 ]

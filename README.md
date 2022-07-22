@@ -12,18 +12,19 @@ Run in docker: `docker run -it sturrent/aks-flp-storage:latest`
 aks-flp-storage tool usage:
 ```
 $ aks-flp-storage -h
-aks-flp-storage usage: aks-flp-storage -l <LAB#> -u <USER_ALIAS> [-v|--validate] [-r|--region] [-h|--help] [--version]
-
+aks-flp-storage usage: aks-flp-storage -l <LAB#> -u <USER_ALIAS> [-v|--validate] [-r|--region] [-s|--sku] [-h|--help] [--version]
 
 Here is the list of current labs available:
-
 *************************************************************************************
 *        1. AKS disk attach issues
 *        2. AKS disk multiattach issues
 *************************************************************************************
 
 "-l|--lab" Lab scenario to deploy (3 possible options)
+"-u|--user" User alias to add on the lab name
 "-r|--region" region to create the resources
-"--version" print version of aks-flp-storage
+"-s|--sku" nodes SKU
+"-v|--validate" validate resolution
+"--version" print version of the tool
 "-h|--help" help info
 ```
