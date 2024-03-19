@@ -1,10 +1,11 @@
 #!/bin/bash
 
 # script name: aks-flp-storage.sh
-# Version v0.0.7 20220721
+# Version v0.0.7 20240315
 # Set of tools to deploy AKS troubleshooting labs
 
 # "-l|--lab" Lab scenario to deploy
+# "-g|--resource-group" resource group to deploy the resources
 # "-r|--region" region to deploy the resources
 # "-s|--sku" nodes SKU
 # "-u|--user" User alias to add on the lab name
@@ -22,7 +23,7 @@ CLUSTER_NAME=""
 LAB_SCENARIO=""
 USER_ALIAS=""
 LOCATION="uksouth"
-SKU="Standard_DS2_v2"
+SKU="Standard_DC2s_v2"
 VALIDATE=0
 HELP=0
 VERSION=0
@@ -65,7 +66,7 @@ done
 # Variable definition
 SCRIPT_PATH="$( cd "$(dirname "$0")" ; pwd -P )"
 SCRIPT_NAME="$(echo $0 | sed 's|\.\/||g')"
-SCRIPT_VERSION="Version v0.0.7 20220721"
+SCRIPT_VERSION="Version v0.0.7 20240315"
 
 # Funtion definition
 
@@ -137,7 +138,7 @@ function validate_cluster_exists () {
 # Usage text
 function print_usage_text () {
     NAME_EXEC="aks-flp-storage"
-    echo -e "$NAME_EXEC usage: $NAME_EXEC -l <LAB#> -u <USER_ALIAS> [-v|--validate] [-r|--region] [-s|--sku] [-h|--help] [--version]"
+    echo -e "$NAME_EXEC usage: $NAME_EXEC -l <LAB#> -u <USER_ALIAS> [-g|--resource-group] [-v|--validate] [-r|--region] [-s|--sku] [-h|--help] [--version]"
     echo -e "\nHere is the list of current labs available:
 *************************************************************************************
 *\t 1. AKS disk attach issues
@@ -155,9 +156,9 @@ echo -e '"-l|--lab" Lab scenario to deploy (3 possible options)
 # Lab scenario 1
 function lab_scenario_1 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    RESOURCE_GROUP=${RESOURCE_GROUP:-aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}}
     
-    check_sku_availability "$SKU"
+    #check_sku_availability "$SKU"
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
@@ -231,7 +232,7 @@ EOF
 
 function lab_scenario_1_validation () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    RESOURCE_GROUP=${RESOURCE_GROUP:-aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}}
     validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
 
     LAB_TAG="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query tags -o yaml 2>/dev/null | grep aks-storage-lab | cut -d ' ' -f2 | tr -d "'")"
@@ -261,9 +262,9 @@ function lab_scenario_1_validation () {
 # Lab scenario 2
 function lab_scenario_2 () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    RESOURCE_GROUP=${RESOURCE_GROUP:-aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}}
     
-    check_sku_availability "$SKU"
+    #check_sku_availability "$SKU"
     check_resourcegroup_cluster $RESOURCE_GROUP $CLUSTER_NAME
 
     echo -e "\n--> Deploying cluster for lab${LAB_SCENARIO}...\n"
@@ -343,7 +344,7 @@ EOF
 
 function lab_scenario_2_validation () {
     CLUSTER_NAME=aks-storage-ex${LAB_SCENARIO}-${USER_ALIAS}
-    RESOURCE_GROUP=aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}
+    RESOURCE_GROUP=${RESOURCE_GROUP:-aks-storage-ex${LAB_SCENARIO}-rg-${USER_ALIAS}}
     validate_cluster_exists $RESOURCE_GROUP $CLUSTER_NAME
 
     LAB_TAG="$(az aks show -g $RESOURCE_GROUP -n $CLUSTER_NAME --query tags -o yaml 2>/dev/null | grep aks-storage-lab | cut -d ' ' -f2 | tr -d "'")"
