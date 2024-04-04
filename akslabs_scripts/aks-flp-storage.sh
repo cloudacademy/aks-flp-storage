@@ -181,6 +181,7 @@ function lab_scenario_1 () {
     az disk create \
     --resource-group $RESOURCE_GROUP \
     --name datadisk1 \
+    --location $LOCATION \
     --size-gb 5 &>/dev/null
     DISK_URI="$(az disk show -g $RESOURCE_GROUP -n datadisk1 -o tsv --query id)"
 
