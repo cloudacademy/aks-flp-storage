@@ -357,7 +357,7 @@ function lab_scenario_2_validation () {
     elif [ $LAB_TAG -eq $LAB_SCENARIO ]
     then
         az aks get-credentials -g $RESOURCE_GROUP -n $CLUSTER_NAME --overwrite-existing &>/dev/null
-        REPLICAS_UNAVAILABLE="$(kubectl describe deploy redis-cache | grep ^Replicas | awk '{print $(NF-1)}')"
+        REPLICAS_UNAVAILABLE="$(kubectl describe -n default deploy redis-cache | grep ^Replicas | awk '{print $(NF-1)}')"
         if [ $REPLICAS_UNAVAILABLE -eq 0 ]
         then
             echo -e "\n\n========================================================"
